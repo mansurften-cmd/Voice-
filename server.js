@@ -42,21 +42,19 @@ const CATEGORIES = ['Work', 'Pleasure', 'What Went Wrong'];
 const IRRITATION = ['Irritated', 'Not Irritated'];
 
 function buildAnalysisPrompt(transcript, voiceMetrics) {
-  const { durationSeconds, wordCount, speakingRateWpm, avgVolume, peakVolume } = voiceMetrics || {};
+  const { durationSeconds, wordCount, speakingRateWpm } = voiceMetrics || {};
 
-  return `You are a journaling assistant that judges a spoken voice-journal entry using BOTH the words said and how it was said (vocal delivery metrics captured while recording).
+  return `You are a journaling assistant that judges a spoken voice-journal entry using BOTH the words said and how it was said (delivery metrics captured while recording).
 
 Transcript:
 """
 ${transcript}
 """
 
-Vocal delivery metrics captured during recording (0-100 scale for volume, unless noted):
+Delivery metrics captured during recording:
 - Duration: ${durationSeconds ?? 'unknown'} seconds
 - Word count: ${wordCount ?? 'unknown'}
-- Speaking rate: ${speakingRateWpm ?? 'unknown'} words per minute (fast/rushed speech and raised volume often signal irritation or anger; slow, low-volume, flat delivery often signals sadness or low mood)
-- Average volume: ${avgVolume ?? 'unknown'}
-- Peak volume: ${peakVolume ?? 'unknown'}
+- Speaking rate: ${speakingRateWpm ?? 'unknown'} words per minute (unusually fast/rushed speech often signals irritation or anger; very slow, sparse delivery often signals sadness or low mood)
 
 Classify this entry and respond with ONLY a JSON object (no markdown, no commentary) with exactly these fields:
 {

@@ -7,7 +7,7 @@ Record a spoken journal entry, get it transcribed live in the browser, and let D
 - **Irritation**: Irritated / Not Irritated
 - **Anger score**: 1-10 (10 = most angry)
 
-The judgment factors in both the transcript text and simple vocal delivery metrics captured while recording (speaking pace, average/peak volume). Entries are saved to a **Voice Journal** database in your Notion workspace.
+The judgment factors in both the transcript text and simple delivery metrics captured while recording (duration, word count, speaking pace). Entries are saved to a **Voice Journal** database in your Notion workspace.
 
 ## 1. Prerequisites
 
@@ -78,9 +78,9 @@ Open http://localhost:3000 in **Chrome or Edge** (Web Speech API live transcript
 
 ## How it works
 
-- **Transcription**: browser-native Web Speech API (`SpeechRecognition`), free and runs client-side while you talk.
-- **Vocal metrics**: a `Web Audio API` `AnalyserNode` samples microphone volume during recording to compute average/peak volume, alongside duration and words-per-minute — passed to the model as delivery cues in addition to the words themselves.
-- **Judgment**: the transcript + vocal metrics are sent to DeepSeek (`deepseek-chat`, JSON output mode) with a prompt asking it to classify category, mood, irritation, and an anger score 1-10 with reasoning.
+- **Transcription**: browser-native Web Speech API (`SpeechRecognition`), free and runs client-side while you talk. It manages its own microphone access — the app doesn't open a separate mic stream, since running two concurrent microphone consumers breaks speech recognition on some mobile browsers (notably Android Chrome).
+- **Delivery metrics**: duration, word count, and words-per-minute are computed from the transcript and recording timer — passed to the model as delivery cues alongside the words themselves.
+- **Judgment**: the transcript + delivery metrics are sent to DeepSeek (`deepseek-chat`, JSON output mode) with a prompt asking it to classify category, mood, irritation, and an anger score 1-10 with reasoning.
 - **Storage**: saved entries are created as pages in your Notion **Voice Journal** database via the Notion API.
 
 ## Notes

@@ -15,8 +15,6 @@ const historyList = document.getElementById('historyList');
 let recognizing = false;
 let recognition = null;
 let finalTranscript = '';
-let audioContext, analyser, micSource, micStream, volumeInterval;
-let volumeSum = 0, volumeSamples = 0, volumePeak = 0;
 let startTime = null, timerInterval = null;
 let lastAnalysis = null;
 
@@ -52,7 +50,12 @@ function setupRecognition() {
   };
 
   rec.onerror = (event) => {
-    if (event.error !== 'no-speech') {
+    if (event.error === 'not-allowed' || event.error === 'audio-capture') {
+      recordHint.textContent = event.error === 'not-allowed'
+        ? 'Microphone access was denied. Allow microphone access in your browser settings and try again.'
+        : 'No microphone could be reached for speech recognition. Check your mic and try again.';
+      stopRecording();
+    } else if (event.error !== 'no-speech') {
       recordHint.textContent = `Speech recognition error: ${event.error}. You can still type/edit the transcript manually.`;
     }
   };
@@ -66,60 +69,24 @@ function setupRecognition() {
   return rec;
 }
 
-async function startVolumeTracking(stream) {
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  micSource = audioContext.createMediaStreamSource(stream);
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 2048;
-  micSource.connect(analyser);
-
-  const data = new Uint8Array(analyser.fftSize);
-  volumeSum = 0;
-  volumeSamples = 0;
-  volumePeak = 0;
-
-  volumeInterval = setInterval(() => {
-    analyser.getByteTimeDomainData(data);
-    let sumSquares = 0;
-    for (let i = 0; i < data.length; i++) {
-      const v = (data[i] - 128) / 128;
-      sumSquares += v * v;
-    }
-    const rms = Math.sqrt(sumSquares / data.length);
-    const level = Math.min(100, Math.round(rms * 200));
-    volumeSum += level;
-    volumeSamples += 1;
-    if (level > volumePeak) volumePeak = level;
-  }, 200);
-}
-
-function stopVolumeTracking() {
-  if (volumeInterval) clearInterval(volumeInterval);
-  if (micSource) micSource.disconnect();
-  if (audioContext) audioContext.close();
-  volumeInterval = null;
-}
-
-async function startRecording() {
-  try {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch {
-    recordHint.textContent = 'Microphone access was denied. Please allow microphone access and try again.';
-    return;
-  }
-
+function startRecording() {
   finalTranscript = '';
   transcriptEl.value = '';
   resultsCard.hidden = true;
   analyzeStatus.textContent = '';
   saveStatus.textContent = '';
 
-  await startVolumeTracking(micStream);
-
   if (SpeechRecognitionImpl) {
+    recordHint.textContent = 'Listening — allow microphone access if your browser asks.';
     recognition = setupRecognition();
     recognizing = true;
-    recognition.start();
+    try {
+      recognition.start();
+    } catch {
+      /* ignore duplicate start */
+    }
+  } else {
+    recordHint.textContent = 'Live transcription is not supported in this browser. Type your entry manually below.';
   }
 
   startTime = Date.now();
@@ -137,10 +104,6 @@ function stopRecording() {
   if (recognition) {
     try { recognition.stop(); } catch { /* ignore */ }
   }
-  if (micStream) {
-    micStream.getTracks().forEach((t) => t.stop());
-  }
-  stopVolumeTracking();
   clearInterval(timerInterval);
 
   recordBtn.classList.remove('recording');
@@ -149,21 +112,12 @@ function stopRecording() {
   const durationSeconds = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
   const wordCount = transcriptEl.value.trim() ? transcriptEl.value.trim().split(/\s+/).length : 0;
   const speakingRateWpm = durationSeconds > 0 ? Math.round((wordCount / durationSeconds) * 60) : 0;
-  const avgVolume = volumeSamples > 0 ? Math.round(volumeSum / volumeSamples) : 0;
 
-  window.__voiceMetrics = {
-    durationSeconds,
-    wordCount,
-    speakingRateWpm,
-    avgVolume,
-    peakVolume: volumePeak,
-  };
+  window.__voiceMetrics = { durationSeconds, wordCount, speakingRateWpm };
 
   document.getElementById('mDuration').textContent = `${durationSeconds}s`;
   document.getElementById('mWords').textContent = wordCount;
   document.getElementById('mPace').textContent = speakingRateWpm;
-  document.getElementById('mAvgVol').textContent = avgVolume;
-  document.getElementById('mPeakVol').textContent = volumePeak;
   metricsEl.hidden = false;
 
   analyzeBtn.disabled = !transcriptEl.value.trim();
