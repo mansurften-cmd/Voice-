@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Voice Journal</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>Voice Journal</h1>
+      <p class="subtitle">Record how you feel. Get judged. Save it.</p>
+    </header>
+
+    <section class="card recorder">
+      <div class="record-row">
+        <button id="recordBtn" class="record-btn">
+          <span class="dot"></span> Start Recording
+        </button>
+        <span id="timer" class="timer">00:00</span>
+      </div>
+      <p id="recordHint" class="hint">Needs microphone access. Live transcription works best in Chrome or Edge.</p>
+
+      <label class="field-label" for="transcript">Transcript (editable)</label>
+      <textarea id="transcript" rows="6" placeholder="Your words will appear here as you talk. You can also type or edit directly."></textarea>
+
+      <div class="metrics" id="metrics" hidden>
+        <span>Duration: <b id="mDuration">-</b></span>
+        <span>Words: <b id="mWords">-</b></span>
+        <span>Pace: <b id="mPace">-</b> wpm</span>
+        <span>Avg volume: <b id="mAvgVol">-</b></span>
+        <span>Peak volume: <b id="mPeakVol">-</b></span>
+      </div>
+
+      <div class="actions">
+        <button id="analyzeBtn" class="primary-btn" disabled>Analyze</button>
+        <button id="resetBtn" class="ghost-btn">Reset</button>
+      </div>
+      <p id="analyzeStatus" class="status"></p>
+    </section>
+
+    <section class="card results" id="resultsCard" hidden>
+      <h2>Judgment</h2>
+      <div class="badges">
+        <span class="badge" id="badgeCategory">-</span>
+        <span class="badge" id="badgeMood">-</span>
+        <span class="badge" id="badgeIrritation">-</span>
+      </div>
+      <div class="anger-meter">
+        <div class="anger-label">Anger score: <b id="angerValue">-</b>/10</div>
+        <div class="anger-bar"><div id="angerFill" class="anger-fill"></div></div>
+      </div>
+      <p class="reasoning" id="reasoning"></p>
+      <div class="actions">
+        <button id="saveBtn" class="primary-btn">Save to Notion</button>
+      </div>
+      <p id="saveStatus" class="status"></p>
+    </section>
+
+    <section class="card history" id="historyCard" hidden>
+      <h2>This session</h2>
+      <ul id="historyList"></ul>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
