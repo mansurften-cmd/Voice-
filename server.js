@@ -1,8 +1,34 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
+
+const APP_USERNAME = process.env.APP_USERNAME || 'journal';
+const APP_PASSWORD = process.env.APP_PASSWORD;
+
+if (APP_PASSWORD) {
+  app.use((req, res, next) => {
+    const header = req.headers.authorization || '';
+    const [scheme, encoded] = header.split(' ');
+    if (scheme === 'Basic' && encoded) {
+      const [user, pass] = Buffer.from(encoded, 'base64').toString().split(':');
+      const userBuf = Buffer.from(user || '');
+      const passBuf = Buffer.from(pass || '');
+      const expectedUserBuf = Buffer.from(APP_USERNAME);
+      const expectedPassBuf = Buffer.from(APP_PASSWORD);
+      const userOk = userBuf.length === expectedUserBuf.length && crypto.timingSafeEqual(userBuf, expectedUserBuf);
+      const passOk = passBuf.length === expectedPassBuf.length && crypto.timingSafeEqual(passBuf, expectedPassBuf);
+      if (userOk && passOk) return next();
+    }
+    res.set('WWW-Authenticate', 'Basic realm="Voice Journal"');
+    res.status(401).send('Authentication required');
+  });
+} else {
+  console.warn('APP_PASSWORD is not set — the app is running without a password gate.');
+}
+
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 

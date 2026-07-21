@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: voice-journal
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: NOTION_TOKEN
+        sync: false
+      - key: NOTION_DATABASE_ID
+        value: 9f059cf5-b09b-435e-941e-3283055e6b7d
+      - key: NOTION_DATA_SOURCE_ID
+        value: 582f8887-d711-4115-9b62-5d613cbdeec5
+      - key: APP_USERNAME
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
