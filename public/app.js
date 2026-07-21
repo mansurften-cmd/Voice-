@@ -36,12 +36,18 @@ function setupRecognition() {
   rec.interimResults = true;
   rec.lang = 'en-US';
 
+  const finalizedIndices = new Set();
+
   rec.onresult = (event) => {
     let interim = '';
     for (let i = event.resultIndex; i < event.results.length; i++) {
-      const text = event.results[i][0].transcript;
-      if (event.results[i].isFinal) {
-        finalTranscript += text + ' ';
+      const result = event.results[i];
+      const text = result[0].transcript;
+      if (result.isFinal) {
+        if (!finalizedIndices.has(i)) {
+          finalizedIndices.add(i);
+          finalTranscript += text + ' ';
+        }
       } else {
         interim += text;
       }
@@ -61,8 +67,11 @@ function setupRecognition() {
   };
 
   rec.onend = () => {
-    if (recognizing) {
-      try { rec.start(); } catch { /* already starting */ }
+    // Only restart if this instance is still the active one — an already-superseded
+    // instance firing a late 'end' event must not spawn another listener.
+    if (recognizing && recognition === rec) {
+      recognition = setupRecognition();
+      try { recognition.start(); } catch { /* already starting */ }
     }
   };
 
