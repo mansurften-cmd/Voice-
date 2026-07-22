@@ -32,7 +32,10 @@ function formatTimer(ms) {
 
 function setupRecognition() {
   const rec = new SpeechRecognitionImpl();
-  rec.continuous = true;
+  // continuous mode is unreliable on Android Chrome — it can re-emit the same
+  // speech as overlapping final segments. Single-utterance sessions, manually
+  // re-chained on 'onend', avoid that while still feeling continuous.
+  rec.continuous = false;
   rec.interimResults = true;
   rec.lang = 'en-US';
 
