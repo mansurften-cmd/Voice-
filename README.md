@@ -2,12 +2,15 @@
 
 Record a spoken journal entry, get it transcribed live in the browser, and let DeepSeek judge it:
 
+- **Title**: a short AI-generated summary of the entry
 - **Category**: Work / Pleasure / What Went Wrong
 - **Mood**: Sad / Not Feeling Good / Medium / Good / Best
 - **Irritation**: Irritated / Not Irritated
 - **Anger score**: 1-10 (10 = most angry)
 
 The judgment factors in both the transcript text and simple delivery metrics captured while recording (duration, word count, speaking pace). Entries are saved to a **Voice Journal** database in your Notion workspace.
+
+The UI is mobile-first with a live recording indicator, mood emoji + colour-graded anger gauge, light/dark themes (auto, with a manual toggle), toast notifications, and a locally-saved list of recent entries. An unauthenticated `/healthz` endpoint is available for uptime monitors.
 
 ## 1. Prerequisites
 

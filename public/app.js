@@ -1,16 +1,19 @@
+/* ---------- Elements ---------- */
 const recordBtn = document.getElementById('recordBtn');
 const timerEl = document.getElementById('timer');
 const transcriptEl = document.getElementById('transcript');
 const recordHint = document.getElementById('recordHint');
+const listeningEl = document.getElementById('listening');
+const wordCountEl = document.getElementById('wordCount');
 const metricsEl = document.getElementById('metrics');
 const analyzeBtn = document.getElementById('analyzeBtn');
 const resetBtn = document.getElementById('resetBtn');
-const analyzeStatus = document.getElementById('analyzeStatus');
 const resultsCard = document.getElementById('resultsCard');
 const saveBtn = document.getElementById('saveBtn');
-const saveStatus = document.getElementById('saveStatus');
 const historyCard = document.getElementById('historyCard');
 const historyList = document.getElementById('historyList');
+const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+const themeToggle = document.getElementById('themeToggle');
 
 let recognizing = false;
 let recognition = null;
@@ -18,16 +21,49 @@ let finalTranscript = '';
 let startTime = null, timerInterval = null;
 let lastAnalysis = null;
 
-const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (!SpeechRecognitionImpl) {
-  recordHint.textContent = 'Live transcription is not supported in this browser. Try Chrome or Edge, or type your entry manually below.';
-}
+/* ---------- Lookups ---------- */
+const MOOD_EMOJI = {
+  Best: '🤩', Good: '🙂', Medium: '😐', 'Not Feeling Good': '😟', Sad: '😢',
+};
+const CATEGORY_EMOJI = { Work: '💼', Pleasure: '🌿', 'What Went Wrong': '⚠️' };
+const IRRITATION_EMOJI = { Irritated: '😤', 'Not Irritated': '😌' };
 
+/* ---------- Helpers ---------- */
 function formatTimer(ms) {
   const totalSeconds = Math.floor(ms / 1000);
   const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
   const ss = String(totalSeconds % 60).padStart(2, '0');
   return `${mm}:${ss}`;
+}
+
+function countWords(text) {
+  const t = text.trim();
+  return t ? t.split(/\s+/).length : 0;
+}
+
+function updateWordCount() {
+  const n = countWords(transcriptEl.value);
+  wordCountEl.textContent = `${n} ${n === 1 ? 'word' : 'words'}`;
+}
+
+function setLoading(btn, on) {
+  btn.classList.toggle('loading', on);
+  btn.disabled = on;
+}
+
+function toast(message, type) {
+  const container = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ` ${type}` : '');
+  el.textContent = message;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 3800);
+}
+
+/* ---------- Speech recognition (verified — do not alter dedup logic) ---------- */
+const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SpeechRecognitionImpl) {
+  recordHint.textContent = 'Live transcription is not supported in this browser. Try Chrome or Edge, or just type your entry.';
 }
 
 function setupRecognition() {
@@ -65,6 +101,7 @@ function setupRecognition() {
     }
     sessionFinal = finalText;
     transcriptEl.value = (finalTranscript + finalText + interim).trim();
+    updateWordCount();
   };
 
   rec.onerror = (event) => {
@@ -96,12 +133,11 @@ function setupRecognition() {
 function startRecording() {
   finalTranscript = '';
   transcriptEl.value = '';
+  updateWordCount();
   resultsCard.hidden = true;
-  analyzeStatus.textContent = '';
-  saveStatus.textContent = '';
 
   if (SpeechRecognitionImpl) {
-    recordHint.textContent = 'Listening — allow microphone access if your browser asks.';
+    recordHint.textContent = 'Listening… allow microphone access if your browser asks.';
     recognition = setupRecognition();
     recognizing = true;
     try {
@@ -110,7 +146,7 @@ function startRecording() {
       /* ignore duplicate start */
     }
   } else {
-    recordHint.textContent = 'Live transcription is not supported in this browser. Type your entry manually below.';
+    recordHint.textContent = 'Live transcription is not supported in this browser. Type your entry below.';
   }
 
   startTime = Date.now();
@@ -119,7 +155,8 @@ function startRecording() {
   }, 250);
 
   recordBtn.classList.add('recording');
-  recordBtn.innerHTML = '<span class="dot"></span> Stop Recording';
+  recordBtn.setAttribute('aria-label', 'Stop recording');
+  listeningEl.hidden = false;
   analyzeBtn.disabled = true;
 }
 
@@ -131,10 +168,14 @@ function stopRecording() {
   clearInterval(timerInterval);
 
   recordBtn.classList.remove('recording');
-  recordBtn.innerHTML = '<span class="dot"></span> Start Recording';
+  recordBtn.setAttribute('aria-label', 'Start recording');
+  listeningEl.hidden = true;
+  recordHint.textContent = transcriptEl.value.trim()
+    ? 'Edit if needed, then analyze your mood.'
+    : 'Tap the mic and start talking. You can edit the text after.';
 
   const durationSeconds = startTime ? Math.round((Date.now() - startTime) / 1000) : 0;
-  const wordCount = transcriptEl.value.trim() ? transcriptEl.value.trim().split(/\s+/).length : 0;
+  const wordCount = countWords(transcriptEl.value);
   const speakingRateWpm = durationSeconds > 0 ? Math.round((wordCount / durationSeconds) * 60) : 0;
 
   window.__voiceMetrics = { durationSeconds, wordCount, speakingRateWpm };
@@ -156,64 +197,73 @@ recordBtn.addEventListener('click', () => {
 });
 
 transcriptEl.addEventListener('input', () => {
+  updateWordCount();
   analyzeBtn.disabled = !transcriptEl.value.trim();
 });
 
 resetBtn.addEventListener('click', () => {
+  if (recognizing) stopRecording();
   transcriptEl.value = '';
   finalTranscript = '';
+  updateWordCount();
   metricsEl.hidden = true;
   resultsCard.hidden = true;
-  analyzeStatus.textContent = '';
-  saveStatus.textContent = '';
   timerEl.textContent = '00:00';
   analyzeBtn.disabled = true;
   window.__voiceMetrics = null;
+  recordHint.textContent = 'Tap the mic and start talking. You can edit the text after.';
 });
 
-const CATEGORY_COLORS = { Work: '#4f46e5', Pleasure: '#16a34a', 'What Went Wrong': '#dc2626' };
-const MOOD_COLORS = {
-  Best: '#16a34a',
-  Good: '#2563eb',
-  Medium: '#ca8a04',
-  'Not Feeling Good': '#ea580c',
-  Sad: '#dc2626',
-};
-const IRRITATION_COLORS = { Irritated: '#dc2626', 'Not Irritated': '#16a34a' };
+/* ---------- Results rendering ---------- */
+function segColor(pos) {
+  if (pos <= 3) return '#17a673';
+  if (pos <= 5) return '#eab308';
+  if (pos <= 7) return '#f97316';
+  return '#e2374a';
+}
+
+function renderGauge(score) {
+  const gauge = document.getElementById('angerGauge');
+  gauge.innerHTML = '';
+  gauge.setAttribute('aria-label', `Anger level ${score} of 10`);
+  for (let i = 1; i <= 10; i++) {
+    const seg = document.createElement('span');
+    if (i <= score) {
+      seg.className = 'on';
+      seg.style.background = segColor(i);
+    }
+    gauge.appendChild(seg);
+  }
+}
 
 function renderResults(result) {
-  const badgeCategory = document.getElementById('badgeCategory');
-  const badgeMood = document.getElementById('badgeMood');
-  const badgeIrritation = document.getElementById('badgeIrritation');
+  document.getElementById('resTitle').textContent = result.title || 'Your reflection';
 
-  badgeCategory.textContent = result.category;
-  badgeCategory.style.borderColor = CATEGORY_COLORS[result.category] || '#999';
-  badgeCategory.style.color = CATEGORY_COLORS[result.category] || '#999';
+  document.getElementById('moodEmoji').textContent = MOOD_EMOJI[result.mood] || '😐';
+  document.getElementById('moodLabel').textContent = result.mood;
 
-  badgeMood.textContent = result.mood;
-  badgeMood.style.borderColor = MOOD_COLORS[result.mood] || '#999';
-  badgeMood.style.color = MOOD_COLORS[result.mood] || '#999';
+  const chipCat = document.getElementById('chipCategory');
+  chipCat.querySelector('.chip-emoji').textContent = CATEGORY_EMOJI[result.category] || '📝';
+  chipCat.querySelector('span:last-child').textContent = result.category;
 
-  badgeIrritation.textContent = result.irritation;
-  badgeIrritation.style.borderColor = IRRITATION_COLORS[result.irritation] || '#999';
-  badgeIrritation.style.color = IRRITATION_COLORS[result.irritation] || '#999';
+  const chipIrr = document.getElementById('chipIrritation');
+  chipIrr.querySelector('.chip-emoji').textContent = IRRITATION_EMOJI[result.irritation] || '😌';
+  chipIrr.querySelector('span:last-child').textContent = result.irritation;
 
   document.getElementById('angerValue').textContent = result.angerScore;
-  document.getElementById('angerFill').style.width = `${result.angerScore * 10}%`;
+  renderGauge(result.angerScore);
+
   document.getElementById('reasoning').textContent = result.reasoning || '';
 
   resultsCard.hidden = false;
-  saveStatus.textContent = '';
+  resultsCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 analyzeBtn.addEventListener('click', async () => {
   const transcript = transcriptEl.value.trim();
   if (!transcript) return;
 
-  analyzeBtn.disabled = true;
-  analyzeStatus.textContent = 'Analyzing...';
-  analyzeStatus.className = 'status';
-
+  setLoading(analyzeBtn, true);
   try {
     const res = await fetch('/api/analyze', {
       method: 'POST',
@@ -225,49 +275,112 @@ analyzeBtn.addEventListener('click', async () => {
 
     lastAnalysis = data;
     renderResults(data);
-    analyzeStatus.textContent = '';
   } catch (err) {
-    analyzeStatus.textContent = err.message;
-    analyzeStatus.className = 'status error';
+    toast(err.message, 'err');
   } finally {
-    analyzeBtn.disabled = false;
+    setLoading(analyzeBtn, false);
   }
 });
 
 saveBtn.addEventListener('click', async () => {
   if (!lastAnalysis) return;
-  saveBtn.disabled = true;
-  saveStatus.textContent = 'Saving to Notion...';
-  saveStatus.className = 'status';
-
+  setLoading(saveBtn, true);
   try {
     const res = await fetch('/api/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        transcript: transcriptEl.value.trim(),
-        ...lastAnalysis,
-      }),
+      body: JSON.stringify({ transcript: transcriptEl.value.trim(), ...lastAnalysis }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Save failed');
 
-    saveStatus.textContent = 'Saved to Notion.';
-    saveStatus.className = 'status success';
-    addHistoryEntry(lastAnalysis, data.url);
+    toast('Saved to Notion ✓', 'ok');
+    addHistoryEntry({ ...lastAnalysis, url: data.url, ts: Date.now() });
   } catch (err) {
-    saveStatus.textContent = err.message;
-    saveStatus.className = 'status error';
+    toast(err.message, 'err');
   } finally {
-    saveBtn.disabled = false;
+    setLoading(saveBtn, false);
   }
 });
 
-function addHistoryEntry(result, url) {
-  historyCard.hidden = false;
-  const li = document.createElement('li');
-  const time = new Date().toLocaleTimeString();
-  li.innerHTML = `<a href="${url}" target="_blank" rel="noopener">${result.category} · ${result.mood} · ${result.irritation} · anger ${result.angerScore}/10</a>
-    <div class="meta">${time}</div>`;
-  historyList.prepend(li);
+/* ---------- History (persisted in localStorage) ---------- */
+const HISTORY_KEY = 'vj_history';
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; } catch { return []; }
 }
+function saveHistory(items) {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 20))); } catch { /* ignore quota */ }
+}
+
+function relativeTime(ts) {
+  const diff = Date.now() - ts;
+  const mins = Math.round(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(ts).toLocaleDateString();
+}
+
+function historyItemNode(item) {
+  const node = document.createElement(item.url ? 'a' : 'div');
+  node.className = 'history-item';
+  if (item.url) { node.href = item.url; node.target = '_blank'; node.rel = 'noopener'; }
+  const title = item.title || 'Journal entry';
+  node.innerHTML = `
+    <span class="history-emoji">${MOOD_EMOJI[item.mood] || '😐'}</span>
+    <span class="history-main">
+      <span class="history-title"></span>
+      <span class="history-sub">${item.category} · anger ${item.angerScore}/10 · ${relativeTime(item.ts)}</span>
+    </span>
+    <span class="history-arrow" aria-hidden="true">↗</span>`;
+  node.querySelector('.history-title').textContent = title;
+  if (!item.url) node.querySelector('.history-arrow').remove();
+  return node;
+}
+
+function renderHistory() {
+  const items = loadHistory();
+  historyCard.hidden = items.length === 0;
+  historyList.innerHTML = '';
+  items.forEach((item) => historyList.appendChild(historyItemNode(item)));
+}
+
+function addHistoryEntry(item) {
+  const items = loadHistory();
+  items.unshift(item);
+  saveHistory(items);
+  renderHistory();
+}
+
+clearHistoryBtn.addEventListener('click', () => {
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+});
+
+/* ---------- Theme ---------- */
+function applyTheme(theme) {
+  if (theme === 'light' || theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', theme);
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+}
+function currentTheme() {
+  const saved = localStorage.getItem('vj_theme');
+  if (saved) return saved;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+applyTheme(localStorage.getItem('vj_theme'));
+themeToggle.addEventListener('click', () => {
+  const next = currentTheme() === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('vj_theme', next);
+  applyTheme(next);
+});
+
+/* ---------- Init ---------- */
+updateWordCount();
+renderHistory();

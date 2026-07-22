@@ -4,6 +4,10 @@ const path = require('path');
 const crypto = require('crypto');
 
 const app = express();
+app.disable('x-powered-by');
+
+// Unauthenticated health check for uptime monitors / Render.
+app.get('/healthz', (req, res) => res.json({ ok: true }));
 
 const APP_USERNAME = process.env.APP_USERNAME || 'journal';
 const APP_PASSWORD = process.env.APP_PASSWORD;
@@ -58,6 +62,7 @@ Delivery metrics captured during recording:
 
 Classify this entry and respond with ONLY a JSON object (no markdown, no commentary) with exactly these fields:
 {
+  "title": a short 3-6 word title summarising the entry (no quotes, no trailing period),
   "category": one of ${JSON.stringify(CATEGORIES)} (pick the single best fit — "What Went Wrong" is for entries mainly about a problem/complaint/mistake, even if it happened at work or during leisure),
   "mood": one of ${JSON.stringify(MOODS)},
   "irritation": one of ${JSON.stringify(IRRITATION)},
@@ -111,6 +116,9 @@ app.post('/api/analyze', async (req, res) => {
     if (!IRRITATION.includes(parsed.irritation)) parsed.irritation = 'Not Irritated';
     const score = Number(parsed.angerScore);
     parsed.angerScore = Number.isFinite(score) ? Math.min(10, Math.max(1, Math.round(score))) : 1;
+    parsed.title = (typeof parsed.title === 'string' && parsed.title.trim())
+      ? parsed.title.trim().replace(/^["']|["']$/g, '').slice(0, 80)
+      : transcript.trim().slice(0, 60);
 
     res.json(parsed);
   } catch (err) {

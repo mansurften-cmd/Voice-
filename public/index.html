@@ -2,65 +2,116 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#6d5efc" />
 <title>Voice Journal</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="app">
-    <header>
-      <h1>Voice Journal</h1>
-      <p class="subtitle">Record how you feel. Get judged. Save it.</p>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        </span>
+        <div>
+          <h1>Voice Journal</h1>
+          <p class="tagline">Speak your mind. See how you feel.</p>
+        </div>
+      </div>
+      <button id="themeToggle" class="icon-btn" type="button" aria-label="Toggle dark mode" title="Toggle theme">
+        <svg class="icon-sun" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+      </button>
     </header>
 
-    <section class="card recorder">
-      <div class="record-row">
-        <button id="recordBtn" class="record-btn">
-          <span class="dot"></span> Start Recording
-        </button>
-        <span id="timer" class="timer">00:00</span>
+    <!-- RECORD -->
+    <section class="card record-card">
+      <button id="recordBtn" class="mic-btn" type="button" aria-label="Start recording">
+        <span class="mic-rings" aria-hidden="true"></span>
+        <span class="mic-icon" aria-hidden="true">
+          <svg class="ico-mic" viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          <svg class="ico-stop" viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2.5"/></svg>
+        </span>
+      </button>
+      <div id="timer" class="timer">00:00</div>
+      <div id="listening" class="equalizer" aria-hidden="true" hidden>
+        <span></span><span></span><span></span><span></span><span></span>
       </div>
-      <p id="recordHint" class="hint">Needs microphone access. Live transcription works best in Chrome or Edge.</p>
+      <p id="recordHint" class="hint">Tap the mic and start talking. You can edit the text after.</p>
+    </section>
 
-      <label class="field-label" for="transcript">Transcript (editable)</label>
-      <textarea id="transcript" rows="6" placeholder="Your words will appear here as you talk. You can also type or edit directly."></textarea>
-
+    <!-- TRANSCRIPT -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Your entry</h2>
+        <span id="wordCount" class="counter">0 words</span>
+      </div>
+      <textarea id="transcript" rows="5" placeholder="Your words appear here as you speak — or just type."></textarea>
       <div class="metrics" id="metrics" hidden>
-        <span>Duration: <b id="mDuration">-</b></span>
-        <span>Words: <b id="mWords">-</b></span>
-        <span>Pace: <b id="mPace">-</b> wpm</span>
+        <span class="metric"><b id="mDuration">0s</b>duration</span>
+        <span class="metric"><b id="mWords">0</b>words</span>
+        <span class="metric"><b id="mPace">0</b>wpm</span>
       </div>
-
       <div class="actions">
-        <button id="analyzeBtn" class="primary-btn" disabled>Analyze</button>
-        <button id="resetBtn" class="ghost-btn">Reset</button>
+        <button id="analyzeBtn" class="btn btn-primary" type="button" disabled>
+          <span class="btn-label">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M3 12h3M18 12h3M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>
+            Analyze mood
+          </span>
+          <span class="spinner" aria-hidden="true"></span>
+        </button>
+        <button id="resetBtn" class="btn btn-ghost" type="button">Clear</button>
       </div>
-      <p id="analyzeStatus" class="status"></p>
     </section>
 
-    <section class="card results" id="resultsCard" hidden>
-      <h2>Judgment</h2>
-      <div class="badges">
-        <span class="badge" id="badgeCategory">-</span>
-        <span class="badge" id="badgeMood">-</span>
-        <span class="badge" id="badgeIrritation">-</span>
+    <!-- RESULTS -->
+    <section class="card result-card" id="resultsCard" hidden>
+      <div class="result-hero">
+        <div id="moodEmoji" class="mood-emoji">🙂</div>
+        <div>
+          <div id="resTitle" class="result-title">Your reflection</div>
+          <div id="moodLabel" class="mood-label">Medium</div>
+        </div>
       </div>
-      <div class="anger-meter">
-        <div class="anger-label">Anger score: <b id="angerValue">-</b>/10</div>
-        <div class="anger-bar"><div id="angerFill" class="anger-fill"></div></div>
+
+      <div class="chips">
+        <span class="chip" id="chipCategory"><span class="chip-emoji">💼</span><span></span></span>
+        <span class="chip" id="chipIrritation"><span class="chip-emoji">😌</span><span></span></span>
       </div>
+
+      <div class="anger">
+        <div class="anger-head">
+          <span>Anger level</span>
+          <span class="anger-num"><b id="angerValue">1</b><span class="anger-max">/10</span></span>
+        </div>
+        <div class="gauge" id="angerGauge" role="img" aria-label="Anger level gauge"></div>
+      </div>
+
       <p class="reasoning" id="reasoning"></p>
-      <div class="actions">
-        <button id="saveBtn" class="primary-btn">Save to Notion</button>
-      </div>
-      <p id="saveStatus" class="status"></p>
+
+      <button id="saveBtn" class="btn btn-primary btn-block" type="button">
+        <span class="btn-label">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+          Save to Notion
+        </span>
+        <span class="spinner" aria-hidden="true"></span>
+      </button>
     </section>
 
-    <section class="card history" id="historyCard" hidden>
-      <h2>This session</h2>
-      <ul id="historyList"></ul>
+    <!-- HISTORY -->
+    <section class="card history-card" id="historyCard" hidden>
+      <div class="card-head">
+        <h2>Recent entries</h2>
+        <button id="clearHistoryBtn" class="link-btn" type="button">Clear</button>
+      </div>
+      <ul id="historyList" class="history-list"></ul>
     </section>
-  </main>
+
+    <footer class="app-footer">Transcribed in your browser · judged by AI · saved to your Notion</footer>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite" aria-atomic="true"></div>
 
   <script src="app.js"></script>
 </body>
