@@ -39,23 +39,32 @@ function setupRecognition() {
   rec.interimResults = true;
   rec.lang = 'en-US';
 
-  const finalizedIndices = new Set();
+  // Text this session has finalized so far. Committed to finalTranscript on 'onend'.
+  let sessionFinal = '';
 
   rec.onresult = (event) => {
+    // event.results is cumulative for this session, so rebuild from scratch each
+    // time rather than appending. Collapse consecutive identical final segments —
+    // Android Chrome sometimes reports the same utterance at multiple result
+    // indices, which an index-based guard cannot catch.
+    let finalText = '';
     let interim = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
+    let prevSeg = null;
+    for (let i = 0; i < event.results.length; i++) {
       const result = event.results[i];
-      const text = result[0].transcript;
+      const seg = result[0].transcript;
       if (result.isFinal) {
-        if (!finalizedIndices.has(i)) {
-          finalizedIndices.add(i);
-          finalTranscript += text + ' ';
+        const norm = seg.trim();
+        if (norm && norm !== prevSeg) {
+          finalText += norm + ' ';
+          prevSeg = norm;
         }
       } else {
-        interim += text;
+        interim += seg;
       }
     }
-    transcriptEl.value = (finalTranscript + interim).trim();
+    sessionFinal = finalText;
+    transcriptEl.value = (finalTranscript + finalText + interim).trim();
   };
 
   rec.onerror = (event) => {
@@ -70,9 +79,12 @@ function setupRecognition() {
   };
 
   rec.onend = () => {
-    // Only restart if this instance is still the active one — an already-superseded
-    // instance firing a late 'end' event must not spawn another listener.
-    if (recognizing && recognition === rec) {
+    // Ignore late 'end' events from an already-superseded instance so its text
+    // isn't committed twice and it can't spawn a second listener.
+    if (recognition !== rec) return;
+    finalTranscript += sessionFinal;
+    // Re-chain a fresh single-utterance session so listening feels continuous.
+    if (recognizing) {
       recognition = setupRecognition();
       try { recognition.start(); } catch { /* already starting */ }
     }
